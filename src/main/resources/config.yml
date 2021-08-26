@@ -1,0 +1,11 @@
+# FlintixCore's official configuration file
+
+
+settings:
+  database:
+    db-name: "test"
+    hostname: "test"
+    username: "test"
+    password: "test"
+    port: 3306
+    ssl: true

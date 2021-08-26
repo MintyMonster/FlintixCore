@@ -1,0 +1,13 @@
+name: FlintixCore
+version: 1.0
+main: uk.co.minty_studios.flintixcore.FlintixCore
+author: MintyMonster
+description: Flintix main plugin.
+api-version: 1.17
+commands:
+  flintixcore:
+    aliases: [fcore, fc, flintix, flintixcore]
+    description: Main FlintixCore commands
+    usage: /flintixcore
+    permission: &cPermission denied.
+    permission-message: flintix.core
