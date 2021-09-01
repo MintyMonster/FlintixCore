@@ -1,7 +1,64 @@
 # FlintixCore's official configuration file
 
 
+# Colour placeholders:
+# %flintix_red%
+# %flintix_green%
+# %flintix_blue%
+# %flintix_beige%
+# %flintix_orange%
+# %flintix_yellow%
+# %flintix_black%
+# %flintix_mid_grey%
+# %flintix_grey%
+# %flintix_discord%
+# %flintix_twitter%
+# %flintix_youtube%
+# %flintix_tiktok%
+# %flintix_website%
+
 settings:
+  gui:
+    rewards:
+      player-head:
+        # %displayname% -> Player's name
+        # %joined% -> Player's first join date
+        # %playtime% -> Player's current play time
+        # %streak% -> Player's current login streak
+        # %money% -> Player's current balance
+        display-name: "%flintix_red%%displayname%"
+        lore:
+          - "%flintix_orange%Joined: %flintix_grey%%joined%"
+          - "%flintix_orange%Playtime: %flintix_grey%%playtime%"
+          - "%flintix_orange%Streak: %flintix_grey%%streak%"
+          - "%flintix_orange%Money: %flintix_grey%%money%"
+
+      # All nodes below only support colours
+      discord:
+        display-name: "%flintix_discord%Discord"
+        lore:
+          - "%flintix_grey%https://discord.gg/B3tnXgd8Yb"
+
+      twitter:
+        display-name: "%flintix_twitter%Twitter"
+        lore:
+          - "%flintix_grey%https://twitter.com/FlintixMC"
+
+      youtube:
+        display-name: "%flintix_youtube%Youtube"
+        lore:
+          - "%flintix_grey%https://www.youtube.com/channel/UCYK4_CCHpwPVqWUd3dEgCIw"
+
+      tiktok:
+        display-name: "%flintix_tiktok%TikTok"
+        lore:
+          - "%flintix_grey%https://www.tiktok.com/@flintixmc?"
+
+      website:
+        display-name: "%flintix_website%Our website!"
+        lore:
+          - "%flintix_grey%https://flintix.com/"
+
   database:
     db-name: "test"
     hostname: "test"
@@ -9,3 +66,12 @@ settings:
     password: "test"
     port: 3306
     ssl: true
+
+
+
+messages:
+  streaks:
+    send-streak-message: true
+    # %streak% -> Player's current streak. (Can only be used in "streak-added")
+    streak-added: "%flintix_green%One day added to your streak! Thank you for playing!"
+    streak-broken: "%flintix_red%You logged in late, you broke your streak! :("

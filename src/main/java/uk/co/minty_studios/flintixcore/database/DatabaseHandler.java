@@ -3,6 +3,8 @@ package uk.co.minty_studios.flintixcore.database;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.bukkit.Bukkit;
+import org.bukkit.Statistic;
+import org.bukkit.entity.Player;
 import uk.co.minty_studios.flintixcore.FlintixCore;
 import uk.co.minty_studios.flintixcore.utils.PlayerObject;
 
@@ -10,9 +12,12 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.text.SimpleDateFormat;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
 
 public class DatabaseHandler {
 
@@ -48,6 +53,41 @@ public class DatabaseHandler {
         return playerMap;
     }
 
+    public void newPlayer(Player player){
+        if(!playerExists(player.getUniqueId())){
+            playerMap.put(player.getUniqueId(), new PlayerObject(player.getUniqueId(), player.getDisplayName(), 1, Instant.now().getEpochSecond(), 0, Instant.now().getEpochSecond()));
+        }else{
+            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+            long lastLog = playerMap.get(player.getUniqueId()).getLastLog();
+            long now = Instant.now().getEpochSecond();
+
+            if(!(sdf.format(lastLog).equals(sdf.format(now)))
+                    && (LocalDate.ofEpochDay(now).equals(LocalDate.ofEpochDay(lastLog).plusDays(1)))){
+
+                playerMap.get(player.getUniqueId()).setStreak(playerMap.get(player.getUniqueId()).getStreak() + 1);
+                playerMap.get(player.getUniqueId()).setLastLog(Instant.now().getEpochSecond());
+
+                if(plugin.getConfig().getBoolean("messages.streaks.send-streak-message"))
+                    player.sendMessage(plugin.parsePlaceholders(plugin.getConfig().getString("messages.streaks.streak-added"))
+                            .replace("%streak%", String.valueOf(playerMap.get(player.getUniqueId()).getStreak())));
+
+            }else if((ChronoUnit.HOURS.between(LocalDate.ofEpochDay(lastLog), LocalDate.ofEpochDay(now)) > 48)){
+
+                playerMap.get(player.getUniqueId()).setStreak(0);
+
+                if(plugin.getConfig().getBoolean("messages.streaks.send-streak-message"))
+                    player.sendMessage(plugin.parsePlaceholders(plugin.getConfig().getString("messages.streaks.streak-broken")));
+            }
+        }
+    }
+
+    private Boolean playerExists(UUID uuid){
+        if(playerMap.containsKey(uuid))
+            return true;
+
+        return false;
+    }
+
     private Connection getConnection(){
         Connection con = null;
         try{
@@ -73,10 +113,10 @@ public class DatabaseHandler {
                 String sql = "CREATE TABLE IF NOT EXISTS PLAYERDATA (" +
                         "UUID TEXT PRIMARY KEY NOT NULL, " +
                         "NAME TEXT NOT NULL, " +
-                        "STREAK INTEGER NOT NULL, " +
                         "MONEY INTEGER NOT NULL, " +
-                        "PLAYTIME INTEGER NOT NULL, " +
-                        "FIRSTLOG INTEGER NOT NULL);";
+                        "STREAK INTEGER NOT NULL, " +
+                        "FIRSTLOG INTEGER NOT NULL," +
+                        "LASTLOG INTEGER NOT NULL);";
 
                 PreparedStatement prep = con.prepareStatement(sql);
                 prep.executeUpdate();
@@ -86,7 +126,7 @@ public class DatabaseHandler {
         });
     }
 
-    public void loadAllPlayers(){ // On eanble after connection
+    public void loadAllPlayers(){ // On enable after connection
         String sql = "SELECT * FROM PLAYERDATA";
 
         this.sync(() -> {
@@ -102,11 +142,11 @@ public class DatabaseHandler {
                             : plugin.getServer().getOfflinePlayer(uuid).getName();
 
                     int streak = rs.getInt("STREAK");
-                    int money = rs.getInt("MONEY");
-                    int playtime = rs.getInt("PLAYTIME");
-                    long firstlog = rs.getLong("DATE");
+                    long firstlog = rs.getLong("FIRSTLOG");
+                    long money = rs.getLong("MONEY");
+                    long lastLog = rs.getLong("LASTLOG");
 
-                    playerMap.put(uuid, new PlayerObject(uuid, name, streak, money, playtime, firstlog));
+                    playerMap.put(uuid, new PlayerObject(uuid, name, streak, firstlog, money, lastLog));
                 }
 
                 plugin.getLogger().info("Players loaded!");
@@ -118,18 +158,18 @@ public class DatabaseHandler {
     }
 
     public void updateDatabase(){
-        String sql = "INSERT INTO PLAYERDATA (UUID,NAME,STREAK,MONEY,PLAYTIME,FIRSTLOG) VALUES (?,?,?,?,?,?) ON CONFLICT(UUID) DO UPDATE SET " +
-                "STREAK = EXCLUDED.STREAK, MONEY = EXCLUDED.MONEY, PLAYTIME = EXCLUDED.PLAYTIME";
+        String sql = "INSERT INTO PLAYERDATA (UUID,NAME,MONEY,STREAK,FIRSTLOG,LASTLOG) VALUES (?,?,?,?,?,?,?) ON CONFLICT(UUID) DO UPDATE SET " +
+                "MONEY = EXCLUDED.MONEY, STREAK = EXCLUDED.STREAK, LASTLOG = EXCLUDED.LASTLOG";
 
         this.async(() -> {
             try(Connection con = this.getConnection(); PreparedStatement prep = con.prepareStatement(sql)){
                 for(Map.Entry<UUID, PlayerObject> entry : playerMap.entrySet()){
                     prep.setString(1, String.valueOf(entry.getKey()));
                     prep.setString(2, entry.getValue().getName());
-                    prep.setInt(3, entry.getValue().getStreak());
-                    prep.setInt(4, entry.getValue().getMoney());
-                    prep.setLong(5, entry.getValue().getPlaytime());
-                    prep.setLong(6, entry.getValue().getFirstLogin());
+                    prep.setLong(3, entry.getValue().getMoney());
+                    prep.setInt(4, entry.getValue().getStreak());
+                    prep.setLong(5, entry.getValue().getFirstLogin());
+                    prep.setLong(6, entry.getValue().getLastLog());
                     prep.addBatch();
                 }
 
@@ -143,18 +183,18 @@ public class DatabaseHandler {
     public void savePlayers(){
         plugin.getLogger().info("Saving player data... This may take a moment.");
 
-        String sql = "INSERT INTO PLAYERDATA (UUID,NAME,STREAK,MONEY,PLAYTIME,FIRSTLOG) VALUES (?,?,?,?,?,?) ON CONFLICT(UUID) DO UPDATE SET " +
-                "STREAK = EXCLUDED.STREAK, MONEY = EXCLUDED.MONEY, PLAYTIME = EXCLUDED.PLAYTIME";
+        String sql = "INSERT INTO PLAYERDATA (UUID,NAME,MONEY,STREAK,FIRSTLOG,LASTLOG) VALUES (?,?,?,?,?,?,?) ON CONFLICT(UUID) DO UPDATE SET " +
+                "MONEY = EXCLUDED.MONEY, STREAK = EXCLUDED.STREAK, LASTLOG = EXCLUDED.LASTLOG";
 
         this.async(() -> {
             try(Connection con = this.getConnection(); PreparedStatement prep = con.prepareStatement(sql)){
                 for(Map.Entry<UUID, PlayerObject> entry : playerMap.entrySet()){
                     prep.setString(1, String.valueOf(entry.getKey()));
                     prep.setString(2, entry.getValue().getName());
-                    prep.setInt(3, entry.getValue().getStreak());
-                    prep.setInt(4, entry.getValue().getMoney());
-                    prep.setLong(5, entry.getValue().getPlaytime());
-                    prep.setLong(6, entry.getValue().getFirstLogin());
+                    prep.setLong(3, entry.getValue().getMoney());
+                    prep.setInt(4, entry.getValue().getStreak());
+                    prep.setLong(5, entry.getValue().getFirstLogin());
+                    prep.setLong(6, entry.getValue().getLastLog());
                     prep.addBatch();
                 }
 
