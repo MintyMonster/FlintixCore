@@ -50,7 +50,7 @@ public class FlintixCore extends JavaPlugin {
         getLogger().info("Loading classes....");
         this.commandManager = new CommandManager(this);
         this.databaseHandler = new DatabaseHandler(this);
-        this.databaseUpdater = new DatabaseUpdater( databaseHandler,this);
+        this.databaseUpdater = new DatabaseUpdater(databaseHandler,this);
 
         getLogger().info("Classes loaded...");
 

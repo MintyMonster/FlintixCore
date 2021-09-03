@@ -71,9 +71,10 @@ public class DatabaseHandler {
                     player.sendMessage(plugin.parsePlaceholders(plugin.getConfig().getString("messages.streaks.streak-added"))
                             .replace("%streak%", String.valueOf(playerMap.get(player.getUniqueId()).getStreak())));
 
-            }else if((ChronoUnit.HOURS.between(LocalDate.ofEpochDay(lastLog), LocalDate.ofEpochDay(now)) > 48)){
+            }else if((ChronoUnit.HOURS.between(LocalDate.ofEpochDay(lastLog), LocalDate.ofEpochDay(now)) > 36)){
 
                 playerMap.get(player.getUniqueId()).setStreak(0);
+                playerMap.get(player.getUniqueId()).setLastLog(Instant.now().getEpochSecond());
 
                 if(plugin.getConfig().getBoolean("messages.streaks.send-streak-message"))
                     player.sendMessage(plugin.parsePlaceholders(plugin.getConfig().getString("messages.streaks.streak-broken")));
